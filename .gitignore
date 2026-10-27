@@ -1,0 +1,13 @@
+.env
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+
+# Dados e artefatos pesados
+data/raw/
+data/processed/
+data/vectorstore/
+*.parquet

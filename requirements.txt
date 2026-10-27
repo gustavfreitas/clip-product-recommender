@@ -1,0 +1,33 @@
+# --- Core de dados ---
+pandas>=2.2
+numpy>=1.26,<3
+scikit-learn>=1.5
+pyarrow>=16.0
+
+# --- Coleta de dados (Passo 1) ---
+kaggle>=1.6
+
+# --- Embeddings multimodais (Passo 2) ---
+torch>=2.4
+transformers>=4.44
+pillow>=10.4
+google-genai>=1.0            # Backend alternativo (Gemini)
+
+# --- Banco de vetores (Passo 3) ---
+chromadb>=0.5
+faiss-cpu>=1.8               # Troque por faiss-gpu se tiver CUDA
+
+# --- Interface (Passo 5) ---
+streamlit>=1.38
+
+# --- Config, logs e utilitarios ---
+pydantic>=2.8
+pydantic-settings>=2.4
+python-dotenv>=1.0
+pyyaml>=6.0
+structlog>=24.4
+tqdm>=4.66
+
+# --- Qualidade de codigo ---
+pytest>=8.3
+ruff>=0.6
