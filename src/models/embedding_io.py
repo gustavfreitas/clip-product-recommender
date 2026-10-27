@@ -238,6 +238,7 @@ class StoredEmbeddings:
         valid: Máscara booleana; False onde a imagem não pôde ser lida.
         model_name: Checkpoint que gerou os vetores.
         dim: Dimensão dos vetores.
+        fingerprint: Hash (catálogo, modelo, dimensão) gravado na geração.
     """
 
     product_ids: list[str]
@@ -246,6 +247,7 @@ class StoredEmbeddings:
     valid: np.ndarray
     model_name: str
     dim: int
+    fingerprint: str = ""
 
     @classmethod
     def load(cls, directory: Path) -> StoredEmbeddings:
@@ -275,6 +277,7 @@ class StoredEmbeddings:
             valid=np.array([pid not in failed for pid in ids], dtype=bool),
             model_name=meta["model_name"],
             dim=int(meta["dim"]),
+            fingerprint=str(meta.get("fingerprint", "")),
         )
 
     def iter_batches(self, batch_size: int = 1024) -> Iterator[tuple[list[str], np.ndarray, np.ndarray]]:

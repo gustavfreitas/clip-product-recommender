@@ -32,6 +32,9 @@ class Settings(BaseSettings):
         clip_model_name: Checkpoint CLIP no Hugging Face Hub.
         device: ``auto`` (cuda > mps > cpu), ``cpu``, ``cuda`` ou ``mps``.
         embed_batch_size: Tamanho do mini-batch na geração de embeddings.
+        vectorstore_dir: Pasta de persistência do ChromaDB.
+        collection_name: Prefixo das coleções (``{prefixo}_image`` / ``{prefixo}_text``).
+        index_batch_size: Itens por ``upsert`` no banco vetorial.
     """
 
     model_config = SettingsConfigDict(
@@ -53,8 +56,11 @@ class Settings(BaseSettings):
     clip_model_name: str = "openai/clip-vit-base-patch32"
     device: str = "auto"
     embed_batch_size: int = Field(default=32, ge=1, le=1024)
+    vectorstore_dir: Path = PROJECT_ROOT / "data" / "vectorstore"
+    collection_name: str = Field(default="products", min_length=3, max_length=40)
+    index_batch_size: int = Field(default=1024, ge=1, le=100_000)
 
-    @field_validator("raw_dir", "processed_dir", mode="after")
+    @field_validator("raw_dir", "processed_dir", "vectorstore_dir", mode="after")
     @classmethod
     def _resolve_relative(cls, value: Path) -> Path:
         """Resolve caminhos relativos a partir da raiz do projeto."""
