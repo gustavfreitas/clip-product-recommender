@@ -29,6 +29,9 @@ class Settings(BaseSettings):
         price_seed: Seed do gerador de preços sintéticos (reprodutibilidade).
         log_level: Nível de log (DEBUG, INFO, WARNING, ERROR).
         log_json: Se True, emite logs em JSON (ideal para produção).
+        clip_model_name: Checkpoint CLIP no Hugging Face Hub.
+        device: ``auto`` (cuda > mps > cpu), ``cpu``, ``cuda`` ou ``mps``.
+        embed_batch_size: Tamanho do mini-batch na geração de embeddings.
     """
 
     model_config = SettingsConfigDict(
@@ -47,6 +50,9 @@ class Settings(BaseSettings):
     price_seed: int = 42
     log_level: str = "INFO"
     log_json: bool = False
+    clip_model_name: str = "openai/clip-vit-base-patch32"
+    device: str = "auto"
+    embed_batch_size: int = Field(default=32, ge=1, le=1024)
 
     @field_validator("raw_dir", "processed_dir", mode="after")
     @classmethod
@@ -63,6 +69,11 @@ class Settings(BaseSettings):
     def catalog_path(self) -> Path:
         """Caminho do catálogo limpo em Parquet."""
         return self.processed_dir / "catalog.parquet"
+
+    @property
+    def embeddings_dir(self) -> Path:
+        """Pasta dos embeddings persistidos (memmap ``.npy`` + metadados)."""
+        return self.processed_dir / "embeddings"
 
     @property
     def report_path(self) -> Path:
@@ -86,6 +97,19 @@ def relative_to_project(path: Path) -> str:
         return Path(os.path.relpath(path, PROJECT_ROOT)).as_posix()
     except ValueError:
         return path.resolve().as_posix()
+
+
+def resolve_project_path(path: str | Path) -> Path:
+    """Transforma um caminho do catálogo em caminho absoluto utilizável.
+
+    Args:
+        path: Caminho relativo à raiz do projeto (ou já absoluto).
+
+    Returns:
+        Caminho absoluto.
+    """
+    p = Path(path)
+    return p if p.is_absolute() else (PROJECT_ROOT / p).resolve()
 
 
 def get_settings() -> Settings:
