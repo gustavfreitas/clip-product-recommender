@@ -35,6 +35,7 @@ class Settings(BaseSettings):
         vectorstore_dir: Pasta de persistência do ChromaDB.
         collection_name: Prefixo das coleções (``{prefixo}_image`` / ``{prefixo}_text``).
         index_batch_size: Itens por ``upsert`` no banco vetorial.
+        default_top_k: Quantidade padrão de recomendações retornadas.
     """
 
     model_config = SettingsConfigDict(
@@ -59,6 +60,7 @@ class Settings(BaseSettings):
     vectorstore_dir: Path = PROJECT_ROOT / "data" / "vectorstore"
     collection_name: str = Field(default="products", min_length=3, max_length=40)
     index_batch_size: int = Field(default=1024, ge=1, le=100_000)
+    default_top_k: int = Field(default=5, ge=1, le=50)
 
     @field_validator("raw_dir", "processed_dir", "vectorstore_dir", mode="after")
     @classmethod

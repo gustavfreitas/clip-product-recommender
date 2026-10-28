@@ -1,0 +1,9 @@
+[server]
+maxUploadSize = 10          # MB: o app só aceita fotos de consulta, não arquivos grandes
+enableXsrfProtection = true
+
+[browser]
+gatherUsageStats = false
+
+[theme]
+primaryColor = "#1f6feb"

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Iterator, Sequence
 from pathlib import Path
 from typing import Any
 
@@ -58,12 +58,11 @@ class ChromaStore(VectorStore):
         """
         self.dim = dim
         self.collection_name = collection_name
+        self.model_name = model_name
         self._meta = {"embeddings_fingerprint": fingerprint, "model_name": model_name, "dim": dim}
         try:
             directory.mkdir(parents=True, exist_ok=True)
-            self._client = chromadb.PersistentClient(
-                path=str(directory), settings=ChromaSettings(anonymized_telemetry=False)
-            )
+            self._client = self._make_client(directory)
             exists = collection_name in _list_collection_names(self._client)
             if exists and recreate:
                 self._client.delete_collection(collection_name)
@@ -78,10 +77,64 @@ class ChromaStore(VectorStore):
         except Exception as exc:  # o Chroma levanta tipos variados entre versões
             raise VectorStoreError(f"Falha ao abrir o ChromaDB em {directory}: {exc}") from exc
 
+        self._max_batch = self._read_max_batch(self._client)
+
+    @staticmethod
+    def _make_client(directory: Path) -> Any:
+        """Cria o cliente persistente (telemetria desligada)."""
+        return chromadb.PersistentClient(path=str(directory), settings=ChromaSettings(anonymized_telemetry=False))
+
+    @staticmethod
+    def _read_max_batch(client: Any) -> int:
+        """Lê o limite de lote do Chroma (com fallback para versões antigas)."""
         try:
-            self._max_batch = int(self._client.get_max_batch_size())
+            return int(client.get_max_batch_size())
         except Exception:  # noqa: BLE001 - recurso ausente em versões antigas
-            self._max_batch = DEFAULT_MAX_BATCH
+            return DEFAULT_MAX_BATCH
+
+    @classmethod
+    def open_existing(cls, directory: Path, collection_name: str) -> ChromaStore:
+        """Abre uma coleção já indexada, sem recriá-la (modo de consulta).
+
+        Dimensão, modelo e fingerprint são lidos dos metadados da própria
+        coleção, o que permite ao buscador usar o mesmo modelo que indexou.
+
+        Args:
+            directory: Pasta de persistência do Chroma (precisa existir).
+            collection_name: Nome da coleção.
+
+        Returns:
+            Store pronto para ``query``.
+
+        Raises:
+            VectorStoreError: Se a pasta ou a coleção não existirem, ou se
+                os metadados da coleção estiverem incompletos.
+        """
+        if not directory.is_dir():
+            raise VectorStoreError(f"Banco vetorial não encontrado em {directory}. Rode: python scripts/build_index.py")
+        obj = cls.__new__(cls)
+        obj.collection_name = collection_name
+        try:
+            obj._client = cls._make_client(directory)
+            if collection_name not in _list_collection_names(obj._client):
+                raise VectorStoreError(
+                    f"Coleção '{collection_name}' não existe em {directory}. Rode: python scripts/build_index.py"
+                )
+            obj._collection = obj._client.get_collection(collection_name, embedding_function=None)
+        except VectorStoreError:
+            raise
+        except Exception as exc:
+            raise VectorStoreError(f"Falha ao abrir '{collection_name}': {exc}") from exc
+
+        meta = dict(obj._collection.metadata or {})
+        if "dim" not in meta or "model_name" not in meta:
+            raise VectorStoreError(f"Coleção '{collection_name}' sem metadados de modelo/dimensão; reconstrua com --recreate.")
+        obj.dim = int(meta["dim"])
+        obj.model_name = str(meta["model_name"])
+        obj._meta = meta
+        obj._max_batch = cls._read_max_batch(obj._client)
+        log.info("collection_opened_readonly", name=collection_name, items=obj.count(), model=obj.model_name)
+        return obj
 
     def _create(self) -> Any:
         """Cria a coleção com HNSW em cosseno (API nova, com fallback para a legada)."""
@@ -213,6 +266,30 @@ class ChromaStore(VectorStore):
             raise VectorStoreError(f"Falha ao ler embeddings: {exc}") from exc
         vectors = res["embeddings"]
         return {pid: np.asarray(vectors[i], dtype=np.float32) for i, pid in enumerate(res["ids"])}
+
+    def iter_metadatas(self, batch_size: int = 5000) -> Iterator[list[dict[str, Any]]]:
+        """Percorre os metadados de todos os itens em páginas (sem carregar vetores).
+
+        Args:
+            batch_size: Itens por página.
+
+        Yields:
+            Listas de dicionários de metadados.
+
+        Raises:
+            VectorStoreError: Se a leitura falhar.
+        """
+        offset = 0
+        while True:
+            try:
+                res = self._collection.get(limit=batch_size, offset=offset, include=["metadatas"])
+            except Exception as exc:
+                raise VectorStoreError(f"Falha ao ler metadados: {exc}") from exc
+            metas = res["metadatas"]
+            if metas is None or len(metas) == 0:
+                return
+            yield [dict(m or {}) for m in metas]
+            offset += len(metas)
 
     def count(self) -> int:
         """Quantidade de itens na coleção."""
