@@ -1,0 +1,6 @@
+# Evita que o Git no Windows converta quebras de linha em arquivos binários do índice.
+data/vectorstore/** binary
+data/processed/images/** binary
+*.jpg binary
+*.sqlite3 binary
+*.bin binary

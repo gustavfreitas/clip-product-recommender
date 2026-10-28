@@ -1,33 +1,18 @@
-# --- Core de dados ---
-pandas>=2.2
-numpy>=1.26,<3
-scikit-learn>=1.5
-pyarrow>=16.0
+# Dependências de EXECUÇÃO do app (é este arquivo que o Streamlit Cloud instala).
+# Para rodar o pipeline completo, testes e lint, use: pip install -r requirements-dev.txt
 
-# --- Coleta de dados (Passo 1) ---
-kaggle>=1.6
+# PyTorch em CPU: evita baixar ~2 GB de bibliotecas CUDA em servidores sem GPU.
+# Se o build do deploy falhar por causa desta linha, apague-a (o PyPI também serve).
+--extra-index-url https://download.pytorch.org/whl/cpu
 
-# --- Embeddings multimodais (Passo 2) ---
+streamlit>=1.38
 torch>=2.4
 transformers>=4.44
 pillow>=10.4
-google-genai>=1.0            # Backend alternativo (Gemini)
-
-# --- Banco de vetores (Passo 3) ---
-chromadb>=0.5
-faiss-cpu>=1.8               # Troque por faiss-gpu se tiver CUDA
-
-# --- Interface (Passo 5) ---
-streamlit>=1.38
-
-# --- Config, logs e utilitarios ---
+numpy>=1.26,<3
+pandas>=2.2
+chromadb>=1.0,<2     # o índice é gravado por esta versão: mantenha a mesma no deploy
 pydantic>=2.8
 pydantic-settings>=2.4
 python-dotenv>=1.0
-pyyaml>=6.0
 structlog>=24.4
-tqdm>=4.66
-
-# --- Qualidade de codigo ---
-pytest>=8.3
-ruff>=0.6

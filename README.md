@@ -22,13 +22,13 @@ app.py (Streamlit)  ·  scripts/search_demo.py (CLI)
 
 ```bash
 python -m venv .venv && source .venv/bin/activate      # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
+pip install -r requirements-dev.txt                    # app + pipeline + testes (requirements.txt = só o app)
 cp .env.example .env                                   # preencha KAGGLE_USERNAME e KAGGLE_KEY
 
 python scripts/prepare_data.py                         # Passo 1: baixa e limpa o dataset
 python scripts/generate_embeddings.py                  # Passo 2: embeddings (CLIP)
 python scripts/build_index.py                          # Passo 3: índice no ChromaDB
-streamlit run app.py                                   # Passo 5: interface
+python -m streamlit run app.py                         # Passo 5: interface
 ```
 
 Para testar rápido, use `--limit 2000` no Passo 1 e rode o Passo 2 sem `--limit`. Todos os scripts são idempotentes e têm `--help`.
@@ -68,14 +68,20 @@ python -m pytest -q
 
 Os testes usam um backend de embeddings falso e o ChromaDB real, então rodam sem GPU e sem baixar o CLIP. Eles cobrem batching, persistência e retomada, indexação, busca, filtros e o app (via `streamlit.testing`).
 
-## Deploy
+## Deploy (Streamlit Community Cloud)
 
-O app só consulta o índice, então o deploy precisa de: o código, `data/vectorstore/`, `data/processed/images/` e dependências. Pontos de atenção:
+O app só consulta o índice, então o repositório precisa conter o código, `data/vectorstore/` e `data/processed/images/`. O `.gitignore` já está ajustado para isso (embeddings brutos, catálogo e dataset bruto continuam de fora).
 
-- Remova `data/vectorstore/` e `data/processed/images/` do `.gitignore` na branch de deploy e use um subconjunto do catálogo (`--limit`) para manter o repositório pequeno.
-- O primeiro start baixa o CLIP (~600 MB) e o carrega em RAM junto com o PyTorch. Planos com ~1 GB de RAM podem não bastar; prefira um host com mais memória (confira os limites atuais do Hugging Face Spaces e do Streamlit Community Cloud).
-- Para uma imagem menor em CPU, instale o PyTorch pelo índice CPU: `pip install torch --index-url https://download.pytorch.org/whl/cpu`.
-- Exemplo de `Dockerfile` (não testado neste repositório):
+1. Gere o índice com um subconjunto que caiba no GitHub (arquivos de até 100 MB): alguns milhares de produtos bastam para a demonstração.
+2. Rode `python scripts/check_deploy.py`. Ele confirma que o índice abre, que toda imagem existe com caminho relativo e que nenhum arquivo passa do limite.
+3. Fixe no `requirements.txt` as versões que você usou localmente (`pip freeze | findstr /i "chromadb torch transformers streamlit"`), principalmente o `chromadb`: o índice é gravado por uma versão e deve ser lido pela mesma.
+4. `git add -A && git commit && git push`. O Streamlit Cloud redeploya sozinho.
+
+Pontos de atenção:
+
+- O primeiro start baixa o CLIP (~600 MB) e o carrega junto com o PyTorch. A documentação do Streamlit lista, "aproximadamente" e sujeito a mudança, 690 MB de memória mínima e 2,7 GB no máximo por app; a faixa esperada deste app é de 1 a 1,5 GB (estimativa, não medida). Se o app reiniciar por falta de memória, hospede em um serviço com mais RAM (por exemplo, Hugging Face Spaces).
+- A linha `--extra-index-url` do `requirements.txt` instala o PyTorch em CPU. Se o build falhar por causa dela, apague-a.
+- Exemplo de `Dockerfile` para outros hosts (não testado neste repositório):
 
 ```dockerfile
 FROM python:3.11-slim
@@ -84,5 +90,5 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 EXPOSE 7860
-CMD ["streamlit", "run", "app.py", "--server.port=7860", "--server.address=0.0.0.0"]
+CMD ["python", "-m", "streamlit", "run", "app.py", "--server.port=7860", "--server.address=0.0.0.0"]
 ```
