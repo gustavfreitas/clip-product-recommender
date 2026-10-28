@@ -41,6 +41,17 @@ python scripts/search_demo.py --image data/processed/images/1530.jpg --exclude-i
 python scripts/search_demo.py --image foto.jpg --text "in black" --gender Men --max-price 200
 ```
 
+## Avaliação
+
+```bash
+python scripts/evaluate.py             # imagem→imagem, texto→imagem e texto→descrição
+python scripts/evaluate.py --skip-text # só imagem→imagem (não carrega o CLIP)
+```
+
+A relevância vem dos metadados do catálogo: dois produtos são relevantes entre si se tiverem o mesmo tipo de artigo (critério estrito: mesmo tipo **e** mesma cor). O relatório traz P@1/5/10, MRR e HitRate, cada um com intervalo de confiança de 95% e a **precisão esperada de um ranking aleatório**, que mostra o ganho real do modelo sobre o acaso. Os resultados são salvos em `reports/eval_<modelo>.json` e `.md` (a tabela pode ser colada aqui). Para comparar modelos, gere o índice com outro `MMREC_CLIP_MODEL_NAME` e rode de novo.
+
+Limitação: é um proxy. Itens de tipos diferentes podem ser substitutos razoáveis, e quase-duplicatas do catálogo inflam a precisão imagem→imagem; os números medem coerência com o catálogo, não satisfação de usuários.
+
 ## Decisões de projeto
 
 | Decisão | Por quê |

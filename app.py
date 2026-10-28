@@ -9,6 +9,7 @@ já executados (Passos 1-3). O app só consulta o índice; nunca indexa.
 
 from __future__ import annotations
 
+import html
 import io
 import re
 import time
@@ -30,6 +31,7 @@ log = get_logger("app")
 MAX_UPLOAD_BYTES = 10 * 1024 * 1024
 CARD_IMAGE_SIZE = 320
 CARDS_PER_ROW = 5
+NAME_MAX_CHARS = 46  # cabe em 3 linhas no card
 EXAMPLE_QUERIES = ("black running shoes", "red summer dress", "blue denim jacket", "leather handbag")
 TEXT_MODES = {"Imagens (visual)": "image", "Descrições (texto)": "text"}
 
@@ -203,10 +205,17 @@ def render_card(hit: Hit, rank: int) -> None:
     name = str(m.get("name", hit.product_id))
     with st.container(border=True):
         st.image(card_image(str(m.get("image_path", ""))))
-        st.markdown(f"**{md(name if len(name) <= 60 else name[:57] + '...')}**")
+        short = name if len(name) <= NAME_MAX_CHARS else name[: NAME_MAX_CHARS - 3] + "..."
+        # Alturas mínimas fixas mantêm preço e botão alinhados entre cards com nomes de tamanhos diferentes.
+        st.markdown(
+            f'<div style="min-height:4.5em;font-weight:600;line-height:1.5">{html.escape(short)}</div>',
+            unsafe_allow_html=True,
+        )
         details = " · ".join(str(m[f]) for f in ("article_type", "base_colour") if m.get(f) and m[f] != "Unknown")
-        if details:
-            st.caption(md(details))
+        st.markdown(
+            f'<div style="min-height:2.6rem;opacity:.65;font-size:.85rem;line-height:1.3rem">{html.escape(details)}</div>',
+            unsafe_allow_html=True,
+        )
         price = m.get("price")
         if isinstance(price, int | float):
             st.markdown(f"**{md(fmt_brl(price))}**")
