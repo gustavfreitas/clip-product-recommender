@@ -17,3 +17,7 @@ data/processed/prep_report.json
 # o app em produção consulta o índice e exibe essas imagens. Rode
 #   python scripts/check_deploy.py
 # antes de dar push para validar tamanho e caminhos.
+
+# Experimentos de comparação de modelos (não vão para o deploy)
+data/vectorstore_*/
+data/processed/embeddings_*/

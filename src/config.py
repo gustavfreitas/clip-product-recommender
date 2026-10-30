@@ -61,6 +61,7 @@ class Settings(BaseSettings):
     collection_name: str = Field(default="products", min_length=3, max_length=40)
     index_batch_size: int = Field(default=1024, ge=1, le=100_000)
     default_top_k: int = Field(default=5, ge=1, le=50)
+    embeddings_dir_name: str = Field(default="embeddings", pattern=r"^[A-Za-z0-9_.-]+$")
 
     @field_validator("raw_dir", "processed_dir", "vectorstore_dir", mode="after")
     @classmethod
@@ -81,7 +82,7 @@ class Settings(BaseSettings):
     @property
     def embeddings_dir(self) -> Path:
         """Pasta dos embeddings persistidos (memmap ``.npy`` + metadados)."""
-        return self.processed_dir / "embeddings"
+        return self.processed_dir / self.embeddings_dir_name
 
     @property
     def report_path(self) -> Path:
