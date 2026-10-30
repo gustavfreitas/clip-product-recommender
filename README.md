@@ -1,5 +1,7 @@
 # Recomendador Multimodal de Produtos
 
+**Demo:** [clip-pro-recommender.streamlit.app](https://clip-pro-recommender.streamlit.app/) ·
+
 Sistema de recomendação de produtos por **imagem**, **texto** ou **os dois juntos**. Os embeddings vêm do CLIP (Hugging Face), a busca por similaridade de cosseno roda no ChromaDB e a interface é um app Streamlit.
 
 ![Resultados do app para uma busca por tênis](docs/app-resultados.png)
